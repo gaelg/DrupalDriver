@@ -24,8 +24,6 @@ class EntityReferenceHandler extends AbstractHandler {
       $label_key = 'name';
     }
 
-    $id_key = $entity_definition->getKey('id');
-
     // Determine target bundle restrictions.
     $target_bundle_key = NULL;
     if ($target_bundles = $this->getTargetBundles()) {
@@ -33,11 +31,7 @@ class EntityReferenceHandler extends AbstractHandler {
     }
 
     foreach ($values as $value) {
-      $query = \Drupal::entityQuery($entity_type_id);
-      $group = $query->orConditionGroup()
-        ->condition($label_key, $value)
-        ->condition($id_key, $value);
-      $query->condition($group);
+      $query = \Drupal::entityQuery($entity_type_id)->condition($label_key, $value);
       $query->accessCheck(FALSE);
       if ($target_bundles && $target_bundle_key) {
         $query->condition($target_bundle_key, $target_bundles, 'IN');
@@ -46,7 +40,19 @@ class EntityReferenceHandler extends AbstractHandler {
         $return[] = array_shift($entities);
       }
       else {
-        throw new \Exception(sprintf("No entity '%s' of type '%s' exists.", $value, $entity_type_id));
+        // The value may be the entity id.
+        $id_key = $entity_definition->getKey('id');
+        $query = \Drupal::entityQuery($entity_type_id)->condition($id_key, $value);
+        $query->accessCheck(FALSE);
+        if ($target_bundles && $target_bundle_key) {
+          $query->condition($target_bundle_key, $target_bundles, 'IN');
+        }
+        if ($entities = $query->execute()) {
+          $return[] = array_shift($entities);
+        }
+        else {
+          throw new \Exception(sprintf("No entity '%s' of type '%s' exists.", $value, $entity_type_id));
+        }
       }
     }
     return $return;
