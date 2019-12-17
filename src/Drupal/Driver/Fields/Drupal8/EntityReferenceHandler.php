@@ -27,6 +27,8 @@ class EntityReferenceHandler extends AbstractHandler {
     if (!$label_key && $entity_type_id == 'user') {
       $label_key = 'name';
     }
+    
+    $id_key = $entity_definition->getKey('id');
 
     // Determine target bundle restrictions.
     $target_bundle_key = NULL;
@@ -35,7 +37,11 @@ class EntityReferenceHandler extends AbstractHandler {
     }
 
     foreach ((array) $values as $value) {
-      $query = \Drupal::entityQuery($entity_type_id)->condition($label_key, $value);
+      $query = \Drupal::entityQuery($entity_type_id);
+      $group = $query->orConditionGroup()
+        ->condition($label_key, $value)
+        ->condition($id_key, $value);
+      $query->condition($group);
       $query->accessCheck(FALSE);
       if ($target_bundles && $target_bundle_key) {
         $query->condition($target_bundle_key, $target_bundles, 'IN');
